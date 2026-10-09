@@ -1,0 +1,23 @@
+# Terraform working files and state (state contains resource IDs and account details)
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Personal values (admin IP). Copy terraform.tfvars.example instead.
+*.tfvars
+!*.tfvars.example
+
+# Never commit keys or credentials
+*.pem
+*.key
+id_*
+*.csv
+.aws/
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store

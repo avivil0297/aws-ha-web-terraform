@@ -1,0 +1,42 @@
+#!/bin/bash
+set -euxo pipefail
+
+apt-get update -y
+apt-get install -y nginx
+snap install aws-cli --classic
+
+TOKEN=$(curl -sX PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
+IID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
+AZ=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/placement/availability-zone)
+
+cat > /var/www/html/whoami.html <<HTML
+<h1>${project_name}</h1>
+<p>Instance: $IID</p>
+<p>AZ: $AZ</p>
+HTML
+
+cat > /etc/systemd/system/site-sync.service <<UNIT
+[Unit]
+Description=Sync website from S3
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/snap/bin/aws s3 sync s3://${bucket_name} /var/www/html --delete --exclude whoami.html --region us-east-1
+UNIT
+
+cat > /etc/systemd/system/site-sync.timer <<UNIT
+[Unit]
+Description=Run site-sync every 60 seconds
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=60
+
+[Install]
+WantedBy=timers.target
+UNIT
+
+systemctl daemon-reload
+systemctl enable --now nginx
+systemctl enable --now site-sync.timer
